@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16
+    container_name: gotly_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gotly
+      POSTGRES_USER: gotly
+      POSTGRES_PASSWORD: gotly
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gotly_backend
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      SECRET_KEY: django-insecure-local-dev-key
+      DEBUG: "True"
+      ALLOWED_HOSTS: 127.0.0.1,localhost
+      POSTGRES_DB: gotly
+      POSTGRES_USER: gotly
+      POSTGRES_PASSWORD: gotly
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gotly_frontend
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
